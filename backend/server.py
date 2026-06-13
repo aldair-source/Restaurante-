@@ -861,71 +861,7 @@ async def seed_data():
     await db.products.create_index("id", unique=True)
     await db.orders.create_index("id", unique=True)
 
-    # Seed historical closed orders for Reports demo (last 30 days)
-    if await db.orders.count_documents({"created_by": "seed"}) == 0:
-        import random
-        prods = await db.products.find({"available": True}, {"_id": 0}).to_list(100)
-        methods = ["efectivo", "transferencia", "otro"]
-        now = datetime.now(timezone.utc)
-        historical = []
-        for days_ago in range(30, -1, -1):
-            # More orders near lunch/dinner; weekends busier
-            base_day = now - timedelta(days=days_ago)
-            is_weekend = base_day.weekday() >= 5
-            day_orders = random.randint(6, 10) + (4 if is_weekend else 0)
-            for _ in range(day_orders):
-                # Peak hours 12-14 and 19-21
-                hour = random.choices(
-                    list(range(10, 23)),
-                    weights=[1, 2, 6, 8, 5, 2, 2, 3, 5, 8, 7, 3, 1],
-                    k=1,
-                )[0]
-                minute = random.randint(0, 59)
-                closed = base_day.replace(hour=hour, minute=minute, second=0, microsecond=0)
-                n_items = random.randint(1, 4)
-                items = []
-                subtotal = 0.0
-                for __ in range(n_items):
-                    p = random.choice(prods)
-                    qty = random.randint(1, 3)
-                    line = p["price"] * qty
-                    subtotal += line
-                    items.append({
-                        "product_id": p["id"],
-                        "name": p["name"],
-                        "qty": qty,
-                        "unit_price": p["price"],
-                        "modifiers": [],
-                        "notes": "",
-                        "line_total": round(line, 2),
-                    })
-                discount = round(random.choice([0, 0, 0, 2, 5]), 2)
-                total = round(subtotal - discount, 2)
-                method = random.choices(methods, weights=[5, 4, 1])[0]
-                oid = str(uuid.uuid4())
-                historical.append({
-                    "id": oid,
-                    "code": f"#H{closed.strftime('%m%d%H%M')}{random.randint(10,99)}",
-                    "table_number": random.choice([None, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
-                    "items": items,
-                    "note": "",
-                    "subtotal": round(subtotal, 2),
-                    "discount": discount,
-                    "extra_charge": 0.0,
-                    "total": total,
-                    "status": "ready",
-                    "created_by": "seed",
-                    "created_by_name": "Seed Demo",
-                    "created_at": (closed - timedelta(minutes=15)).isoformat(),
-                    "updated_at": closed.isoformat(),
-                    "payments": [{"method": method, "amount": total, "tip": 0.0}],
-                    "paid": True,
-                    "closed_at": closed.isoformat(),
-                    "closed_by": "Cajero Demo",
-                })
-        if historical:
-            await db.orders.insert_many(historical)
-            logger.info(f"Seeded {len(historical)} historical orders for reports")
+    # Historical demo orders removed
 
 
 # ================= SOCIOS / LIQUIDACIÓN =================
